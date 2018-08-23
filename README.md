@@ -4,6 +4,13 @@
 
 <img src="https://github.com/kubernetes/kubernetes/raw/master/logo/logo.png" width="100">
 
+## Note
+
+```
+This branch primary addhook to the endpoint, and so call upstream.
+```
+
+
 ----
 
 Kubernetes is an open source system for managing [containerized applications]
