@@ -15,7 +15,7 @@ import (
 
 var (
 	//upstreamnChangeAPI = flag.String("upstreamc", "http://upstream-pre.sched.qianbao-inc.com/up_nginx_state/", "upstream change api url")
-	hookAPI = flag.String("hook-api", "http://172.28.158.239:8080/hook", "hook api url")
+	hookAPI = flag.String("hook-api", "http://localhost:8081/hook", "hook api url")
 	logPath = flag.String("hook-logpath", "/var/log/hook.log", "hook log path")
 )
 
