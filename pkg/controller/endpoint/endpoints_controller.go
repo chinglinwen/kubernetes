@@ -171,6 +171,10 @@ func (e *EndpointController) getPodServiceMemberships(pod *v1.Pod) (sets.String,
 // enqueue them. obj must have *v1.Pod type.
 func (e *EndpointController) addPod(obj interface{}) {
 	pod := obj.(*v1.Pod)
+
+	// call outside
+	hook(PhaseADD, pod)
+
 	services, err := e.getPodServiceMemberships(pod)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v's service memberships: %v", pod.Namespace, pod.Name, err))
@@ -192,6 +196,10 @@ func (e *EndpointController) updatePod(old, cur interface{}) {
 		// Two different versions of the same pod will always have different RVs.
 		return
 	}
+
+	// call outside
+	hook(PhaseUPDATE, newPod, oldPod)
+
 	services, err := e.getPodServiceMemberships(newPod)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Unable to get pod %v/%v's service memberships: %v", newPod.Namespace, newPod.Name, err))
@@ -242,6 +250,10 @@ func getSubdomain(pod *v1.Pod) string {
 // obj could be an *v1.Pod, or a DeletionFinalStateUnknown marker item.
 func (e *EndpointController) deletePod(obj interface{}) {
 	if _, ok := obj.(*v1.Pod); ok {
+
+		// call outside
+		hook(PhaseDEL, obj.(*v1.Pod))
+
 		// Enqueue all the services that the pod used to be a member
 		// of. This happens to be exactly the same thing we do when a
 		// pod is added.
