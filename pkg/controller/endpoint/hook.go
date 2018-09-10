@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -85,6 +84,8 @@ func parsePod(phase Phase, pod *v1.Pod) (p PodInfo, err error) {
 		return
 	}
 
+	//log.Println("ip ", ip, port, name)
+
 	return PodInfo{
 		Name:      name,
 		Namespace: namespace,
@@ -120,8 +121,8 @@ func hook(phase Phase, pods ...*v1.Pod) {
 	}
 	//log.Printf("dump %v\n", spew.Sdump("new: %v, ==== old:%v\n", pod, oldpod))
 
-	log.Printf("hook meta: %v, ns: %v, status: %v, phase: %v\n",
-		pod.ObjectMeta.Name, pod.ObjectMeta.Namespace, pod.Status.Phase, phase)
+	log.Printf("hook meta: %v, ns: %v, status: %v, phase: %v, skip: %v\n",
+		pod.ObjectMeta.Name, pod.ObjectMeta.Namespace, pod.Status.Phase, phase, phase != PhaseUPDATE)
 
 	if phase != PhaseUPDATE {
 		// ignore add and del event, use update only instead
@@ -133,7 +134,15 @@ func hook(phase Phase, pods ...*v1.Pod) {
 		log.Println("hook parse pod err: ", err)
 		return
 	}
-	//log.Println("podinfo", p)
+	//log.Printf("podinfo: %#v\n", p)
+
+	// for testing, to comment out
+	/* 	if !strings.Contains(p.Name, "ops-fs") {
+	   		log.Println("hook skip non ops-fs for now")
+	   		return
+	   	}
+	*/
+	//log.Printf("info: new:%#v,old:%#v\nend...\n", pod, oldpod)
 
 	var realPhase Phase
 	var realip, realport string
@@ -144,12 +153,24 @@ func hook(phase Phase, pods ...*v1.Pod) {
 			return
 		}
 
-		if (oldpodinfo.IP != "" && p.IP == "") || (oldpodinfo.Port != p.Port) {
+		// the pattern of delete pod
+		if (pod.ObjectMeta.DeletionTimestamp != nil) && (oldpod.ObjectMeta.DeletionTimestamp == nil) {
+			log.Println("found a delete phase")
+			realip = p.IP
+			realport = p.Port
+			realPhase = PhaseDEL
+		}
+
+		// this is correct, but wait 30 seconds
+		/* 	if (oldpodinfo.IP != "" && p.IP == "") || (oldpodinfo.Port != p.Port) {
 			realip = oldpodinfo.IP
 			realport = oldpodinfo.Port
 			realPhase = PhaseDEL
-		}
+		} */
+
+		// pattern of add
 		if (oldpodinfo.IP == "" && p.IP != "") || (oldpodinfo.Port != p.Port) {
+			log.Println("found a add phase")
 			realip = p.IP
 			realport = p.Port
 			realPhase = PhaseADD
@@ -161,7 +182,7 @@ func hook(phase Phase, pods ...*v1.Pod) {
 
 	}
 	if realPhase == PhaseUnknown {
-		log.Println("skip this phase")
+		log.Println("not detect as del or add, so skip this phase")
 		return
 	}
 
@@ -208,16 +229,4 @@ func CallHookAPI(phase, name, ns, ip, port, reason, msg string) error {
 		log.Printf("hook call hookapi error code: %v, body:%v\n", resp.StatusCode(), string(resp.Body()))
 	}
 	return nil
-}
-
-func parseState(body []byte) (state bool, err error) {
-	var result []interface{}
-	err = json.Unmarshal(body, &result)
-	if err != nil || len(result) == 0 {
-		return
-	}
-	if state, _ = result[0].(bool); state != true {
-		return
-	}
-	return true, err
 }
