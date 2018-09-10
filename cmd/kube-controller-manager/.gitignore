@@ -1,3 +1,4 @@
 *.log
 kube-controller-manager
 *.tar.gz
+*.bak
